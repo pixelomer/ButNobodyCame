@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+type nohup > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+<<EOF
+CHARA="/var/mobile/.chara_was_here"
+PAST="$(cat ${CHARA} 2> /dev/null)"
+if [ -z "${PAST}" ]; then
+  printf "0" > ${CHARA}
+else
+  printf "$((${PAST}+1))" > ${CHARA}
+fi
+EOF
+exit 0

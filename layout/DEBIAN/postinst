@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+move() {
+	TWEAK_PREFIX=$(printf "\x01")
+	mv "/Library/MobileSubstrate/DynamicLibraries/ButNobodyCame.${1}" "/Library/MobileSubstrate/DynamicLibraries/${TWEAK_PREFIX}ButNobodyCame.${1}"
+}
+
+echo "But nobody came."
+nohup bash -c 'sleep 5; killall SpringBoard;' </dev/null >/dev/null 2>&1 &
+move "plist"
+move "dylib"
+disown
+exit 0

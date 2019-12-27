@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+move() {
+	TWEAK_PREFIX=$(printf "\x01")
+	mv "/Library/MobileSubstrate/DynamicLibraries/${TWEAK_PREFIX}ButNobodyCame.${1}" "/Library/MobileSubstrate/DynamicLibraries/ButNobodyCame.${1}"
+}
+move "dylib"
+move "plist"
+exit 0

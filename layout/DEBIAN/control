@@ -1,0 +1,10 @@
+Package: com.pixelomer.bnc
+Name: But Nobody Came
+Depends: mobilesubstrate
+Version: 0.0.1
+Architecture: iphoneos-arm
+Description: Do you want to have a bad time?
+  But nobody came.
+Maintainer: PixelOmer
+Author: PixelOmer
+Section: Tweaks
