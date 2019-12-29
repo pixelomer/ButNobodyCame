@@ -59,6 +59,34 @@ static struct {
 	return nil;
 }
 %end
+%hook SBHomeHardwareButton
+- (void)initialButtonDown:(id)arg1 {}
+- (void)initialButtonUp:(id)arg1 {}
+- (void)singlePressUp:(id)arg1 {}
+- (void)acceleratedSinglePressUp:(id)arg1 {}
+- (void)doublePressDown:(id)arg1 {}
+- (void)doublePressUp:(id)arg1 {}
+- (void)triplePressUp:(id)arg1 {}
+- (void)doubleTapUp:(id)arg1 {}
+- (void)screenshotRecognizerDidRecognize:(id)arg1 {}
+- (BOOL)isButtonDown { return NO; }
+- (void)longPress:(id)arg1 {}
+- (void)_singlePressUp:(id)arg1 {}
+%end
+%hook SBLockHardwareButton
+- (void)singlePress:(id)arg1 {}
+- (void)doublePress:(id)arg1 {}
+- (void)triplePress:(id)arg1 {}
+- (void)quadruplePress:(id)arg1 {}
+- (BOOL)isButtonDown { return NO; }
+- (void)longPress:(id)arg1 {
+	#if DEBUG
+	// Debug-only escape
+	[NSException raise:NSInternalInconsistencyException format:@"Escaped from having a bad time."];
+	#endif
+}
+- (void)buttonDown:(id)arg1 {}
+%end
 %end
 
 static void BNCHandlePhaseNotification(
