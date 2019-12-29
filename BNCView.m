@@ -57,6 +57,21 @@ static UIFont *font;
 - (void)prepareTextAnimation {
 	[_label.topAnchor constraintEqualToAnchor:self.centerYAnchor constant:-40.0].active = 
 	[_label.leftAnchor constraintEqualToAnchor:self.centerXAnchor constant:-142.5].active = YES;
+	_option1Label = [UILabel new];
+	_option2Label = [UILabel new];
+	for (UILabel *label in @[_option1Label, _option2Label]) {
+		label.translatesAutoresizingMaskIntoConstraints = NO;
+		[self addSubview:label];
+		label.textColor = [UIColor whiteColor];
+		label.numberOfLines = 1;
+		label.font = self.class.font;
+		[label.widthAnchor constraintGreaterThanOrEqualToConstant:0.0].active = 
+		[label.heightAnchor constraintGreaterThanOrEqualToConstant:0.0].active = YES;
+	}
+	[_option1Label.topAnchor constraintEqualToAnchor:self.centerYAnchor constant:77.5].active = 
+	[_option1Label.centerXAnchor constraintEqualToAnchor:self.centerXAnchor constant:0.0].active = YES;
+	[_option2Label.topAnchor constraintEqualToAnchor:_option1Label.bottomAnchor constant:12.5].active =
+	[_option2Label.centerXAnchor constraintEqualToAnchor:self.centerXAnchor constant:0.0].active = YES;
 }
 
 - (void)animateString:(NSString *)text completion:(void(^)(void))completion {
@@ -83,7 +98,7 @@ static UIFont *font;
 	[self animateString:array[0] completion:^{
 		if (newArray.count) {
 			[NSThread sleepForTimeInterval:delay];
-			[self animateStrings:(id)newArray delay:delay completion:nil];
+			[self animateStrings:(id)newArray delay:delay completion:completion];
 		}
 		else if (completion) {
 			completion();

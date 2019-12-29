@@ -4,21 +4,38 @@
 #import <AVFoundation/AVFoundation.h>
 #import "data/data.h"
 
+@class SpringBoard;
+
 static AVAudioPlayer *audioPlayer;
 static id sharedReceiver;
 static NSArray *phase2IDs;
 static NSArray *blockedKeys;
+static NSTimer *preventAutolockTimer;
+static NSPointerArray *windowArray;
 static NSArray *blacklistedApps;
+static NSDictionary *localizationReplacements;
 static CFNotificationCenterRef notifCenter;
 static uint8_t phase1Sound[] = PHASE1_SOUND;
+static SpringBoard * __strong springboard;
 static uint8_t phase2Sound[] = PHASE2_SOUND;
+static uint8_t currentSoundIndex = 1;
 static struct {
 	uint8_t *data;
 	size_t size;
 } sounds[] = {
 	{ phase1Sound, sizeof(phase1Sound) },
 	{ phase2Sound, sizeof(phase2Sound) },
+	{ NULL, 0 },
 };
+
+@interface SpringBoard : NSObject
+- (BOOL)isLocked;
+@end
+
+@interface SBIdleTimerProxy : NSObject
+- (void)reset;
+- (id)sourceTimer;
+@end
 
 @interface SBFWallpaperView : UIView
 @property (nonatomic, strong) UIView *blackView;
@@ -33,6 +50,19 @@ static struct {
 @property (nonatomic) __weak WGWidgetHostingViewController *widgetHost;
 @end
 
+%group SpringBoardPhase2
+%hook UIWindow
+- (void)setUserInteractionEnabled:(BOOL)isIt {
+	%orig(NO);
+}
+%end
+%hook _UISystemGestureWindow
+- (id)hitTest:(CGPoint)arg1 withEvent:(id)arg2 {
+	return nil;
+}
+%end
+%end
+
 static void BNCHandlePhaseNotification(
 	CFNotificationCenterRef center,
 	void *observer,
@@ -42,18 +72,47 @@ static void BNCHandlePhaseNotification(
 ) {
 	NSString *name = (__bridge NSString *)cfname;
 	uint8_t soundIndex = !!([name characterAtIndex:(name.length-1)] == '2');
+	if (soundIndex == currentSoundIndex) return;
+	if ((currentSoundIndex = soundIndex)) {
+		[windowArray compact];
+		%init(SpringBoardPhase2);
+		for (UIWindow *window in windowArray.allObjects) {
+			window.userInteractionEnabled = NO;
+		}
+		preventAutolockTimer = [NSTimer
+			scheduledTimerWithTimeInterval:10.0
+			repeats:YES
+			block:^(NSTimer *timer){
+				if (!springboard.isLocked) {
+					SBIdleTimerProxy *currentTimer = MSHookIvar<id>(springboard, "_idleTimer");
+					if (currentTimer) {
+						while (currentTimer.class == %c(SBIdleTimerProxy)) {
+							currentTimer = currentTimer.sourceTimer;
+						}
+						[currentTimer reset];
+					}
+				}
+			}
+		];
+	}
+	else {
+		[preventAutolockTimer invalidate];
+		preventAutolockTimer = nil;
+	}
 	[audioPlayer stop];
-	audioPlayer = [[AVAudioPlayer alloc]
-		initWithData:[NSData
-			dataWithBytesNoCopy:sounds[soundIndex].data
-			length:sounds[soundIndex].size
-			freeWhenDone:NO
-		]
-		error:nil
-	];
-	audioPlayer.numberOfLoops = -1;
-	audioPlayer.volume = 1.0;
-	[audioPlayer play];
+	if (sounds[soundIndex].data) {
+		audioPlayer = [[AVAudioPlayer alloc]
+			initWithData:[NSData
+				dataWithBytesNoCopy:sounds[soundIndex].data
+				length:sounds[soundIndex].size
+				freeWhenDone:NO
+			]
+			error:nil
+		];
+		audioPlayer.numberOfLoops = -1;
+		audioPlayer.volume = 1.0;
+		[audioPlayer play];
+	}
 }
 
 @interface VolumeControl : NSObject
@@ -64,6 +123,23 @@ static void BNCHandlePhaseNotification(
 - (void)setMediaVolume:(float)arg1;
 - (void)setActiveCategoryVolume:(float)arg1;
 @end
+
+%group Shared
+%hook NSBundle
+- (NSString *)localizedStringForKey:(NSString *)key value:(NSString *)val table:(NSString *)table {
+	return (localizationReplacements[key] ?: %orig);
+}
+%end
+%hookf(void *, dlopen, const char *cpath, int mode) {
+	if (cpath) {
+		NSString *path = @(cpath);
+		if ([path containsString:@"TweakInject"] || [path hasPrefix:@"/Library/MobileSubstrate/DynamicLibraries"]) {
+			return NULL;
+		}
+	}
+	return %orig;
+}
+%end
 
 %group Client
 %hook UISceneConfiguration
@@ -97,6 +173,7 @@ static void BNCHandlePhaseNotification(
 			NULL,
 			YES
 		);
+		self.handleVolumeButtons = NO;
 		[self.rootViewController.view prepareTextAnimation];
 		[self.rootViewController.view animateStrings:@[
 			@"Interesting.    ",
@@ -104,11 +181,15 @@ static void BNCHandlePhaseNotification(
 			@"You want to go back to\nthe device \x07\x07\x07\x07you destroyed.",
 			@"It was you who pushed\neverything \x07\x07\x07\x07to its edge.",
 			@"It was you who led this\ndevice \x07\x07\x07\x07to its destruction.",
-			@"But you cannot accept it."
-		] delay:1.0 completion:nil];
+			@"But you cannot accept it.",
+			@"You think you are above\nconsequences."
+		] delay:1.0 completion:^{
+			self.rootViewController.view.option1Label.text = @"YES (Vol.Up)  ";
+			self.rootViewController.view.option2Label.text = @"NO  (Vol.Down)";
+			self.handleVolumeButtons = YES;
+		}];
 	}
 	else {
-		/*
 		CFNotificationCenterPostNotification(
 			notifCenter,
 			Phase1Notification,
@@ -116,10 +197,15 @@ static void BNCHandlePhaseNotification(
 			NULL,
 			YES
 		);
-		*/
 		[self.rootViewController.view centerText];
 		[self.rootViewController.view.label setText:@"But nobody came."];
 	}
+}
+- (void)handleVolumeUp {
+	[self.rootViewController.view animateString:@"Exactly." completion:nil];
+}
+- (void)handleVolumeDown {
+	[self.rootViewController.view animateString:@"Then what are you looking\nfor?" completion:nil];
 }
 %end
 
@@ -133,6 +219,13 @@ static void BNCHandlePhaseNotification(
 %end
 
 %group Server
+%hook SpringBoard
++ (id)alloc {
+	id orig = %orig;
+	springboard = orig;
+	return orig;
+}
+%end
 %hook WGWidgetPlatterView
 %property (nonatomic, strong) BNCView *tweakView;
 
@@ -146,6 +239,17 @@ static void BNCHandlePhaseNotification(
 		[self.tweakView.label setText:@"But nobody came."];
 	}
 	%orig(self.tweakView);
+}
+
+%end
+%hook UIWindow
+
++ (id)alloc {
+	id instance = %orig;
+	if ((self == %c(FBRootWindow)) || (self == %c(UIRootSceneWindow))) {
+		[windowArray addPointer:(void *)instance];
+	}
+	return instance;
 }
 
 %end
@@ -182,9 +286,48 @@ static void BNCHandlePhaseNotification(
 }
 
 %end
+%hook CCUIModuleCollectionView
+- (id)initWithFrame:(CGRect)frame layoutOptions:(id)opts {
+	id instance = %orig;
+	[(UIView *)instance setHidden:YES];
+	return instance;
+}
+- (void)setHidden:(BOOL)hidden {
+	%orig(YES);
+}
+%end
+%hook SBVolumeHardwareButton
+
+- (void)volumeIncreasePress:(id)arg1 {
+	CFNotificationCenterPostNotification(
+		notifCenter,
+		VolUpNotification,
+		NULL,
+		NULL,
+		YES
+	);
+}
+
+- (void)volumeDecreasePress:(id)arg1 {
+	CFNotificationCenterPostNotification(
+		notifCenter,
+		VolDownNotification,
+		NULL,
+		NULL,
+		YES
+	);
+}
+
+%end
 %end
 
 %ctor {
+	localizationReplacements = @{
+		@"DELETE_APP_SHORTCUT_ITEM_TITLE" : @"Murder",
+		@"SEARCH_BAR_PLACEHOLDER" : @"Where are the repos"
+	};
+	windowArray = [NSPointerArray weakObjectsPointerArray];
+	%init(Shared); // Block other tweaks
 	blacklistedApps = @[
 		@"com.apple.Spotlight"
 	];

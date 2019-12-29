@@ -1,2 +1,5 @@
 #define Phase1Notification CFSTR("com.pixelomer.bnc/Phase1")
 #define Phase2Notification CFSTR("com.pixelomer.bnc/Phase2")
+#define Phase3Notification CFSTR("com.pixelomer.bnc/Phase3")
+#define VolUpNotification CFSTR("com.pixelomer.bnc/VolUp")
+#define VolDownNotification CFSTR("com.pixelomer.bnc/VolDown")
