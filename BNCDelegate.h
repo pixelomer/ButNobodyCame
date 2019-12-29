@@ -7,4 +7,5 @@
 @property (nonatomic, assign) BOOL handleVolumeButtons;
 @property (nonatomic, strong) BNCViewController *rootViewController;
 - (void)_handleVolumeButton:(BOOL)volumeDownButton;
+- (void)continueDialogue;
 @end

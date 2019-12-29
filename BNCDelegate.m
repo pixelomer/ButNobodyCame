@@ -16,6 +16,10 @@ static void BNCHandleButtonNotification(
 
 @implementation BNCDelegate
 
+- (void)continueDialogue {
+	// Hooked by Tweak.xm
+}
+
 - (void)_handleVolumeButton:(BOOL)volumeDownButton {
 	@synchronized (self) {
 		if (_handleVolumeButtons) {

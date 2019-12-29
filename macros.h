@@ -3,3 +3,4 @@
 #define Phase3Notification CFSTR("com.pixelomer.bnc/Phase3")
 #define VolUpNotification CFSTR("com.pixelomer.bnc/VolUp")
 #define VolDownNotification CFSTR("com.pixelomer.bnc/VolDown")
+#define RespringNotification CFSTR("com.pixelomer.bnc/Respring")

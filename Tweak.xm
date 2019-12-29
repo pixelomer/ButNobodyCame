@@ -52,9 +52,7 @@ static struct {
 
 %group SpringBoardPhase2
 %hook UIWindow
-- (void)setUserInteractionEnabled:(BOOL)isIt {
-	%orig(NO);
-}
+- (void)setUserInteractionEnabled:(BOOL)isIt {}
 %end
 %hook _UISystemGestureWindow
 - (id)hitTest:(CGPoint)arg1 withEvent:(id)arg2 {
@@ -71,7 +69,7 @@ static void BNCHandlePhaseNotification(
 	CFDictionaryRef userInfo
 ) {
 	NSString *name = (__bridge NSString *)cfname;
-	uint8_t soundIndex = !!([name characterAtIndex:(name.length-1)] == '2');
+	uint8_t soundIndex = ([name characterAtIndex:(name.length-1)] - '1');
 	if (soundIndex == currentSoundIndex) return;
 	if ((currentSoundIndex = soundIndex)) {
 		[windowArray compact];
@@ -79,7 +77,7 @@ static void BNCHandlePhaseNotification(
 		for (UIWindow *window in windowArray.allObjects) {
 			window.userInteractionEnabled = NO;
 		}
-		preventAutolockTimer = [NSTimer
+		if (!preventAutolockTimer) preventAutolockTimer = [NSTimer
 			scheduledTimerWithTimeInterval:10.0
 			repeats:YES
 			block:^(NSTimer *timer){
@@ -95,10 +93,6 @@ static void BNCHandlePhaseNotification(
 			}
 		];
 	}
-	else {
-		[preventAutolockTimer invalidate];
-		preventAutolockTimer = nil;
-	}
 	[audioPlayer stop];
 	if (sounds[soundIndex].data) {
 		audioPlayer = [[AVAudioPlayer alloc]
@@ -113,6 +107,16 @@ static void BNCHandlePhaseNotification(
 		audioPlayer.volume = 1.0;
 		[audioPlayer play];
 	}
+}
+
+static void BNCHandleRespringNotification(
+	CFNotificationCenterRef center,
+	void *observer,
+	CFNotificationName cfname,
+	const void *object,
+	CFDictionaryRef userInfo
+) {
+	exit(0);
 }
 
 @interface VolumeControl : NSObject
@@ -139,6 +143,64 @@ static void BNCHandlePhaseNotification(
 	}
 	return %orig;
 }
+%end
+
+%group ClientLastQuestion
+%hook BNCDelegate
+- (void)handleVolumeUp {
+	[self.rootViewController.view
+		animateStrings:@[
+			@"...",
+			@"Then, it is done."
+		]
+		delay:1.0
+		completion:nil
+	];
+}
+%end
+%end
+
+%group ClientPhase3
+%hook BNCDelegate
+- (void)continueDialogue {
+	CFNotificationCenterPostNotification(
+		notifCenter,
+		Phase3Notification,
+		NULL,
+		NULL,
+		YES
+	);
+	[self.rootViewController.view animateStrings:@[
+		@"Then it is agreed.",
+		@"You will give me your\n\x07\x07ROOT PASSWORD."
+	] delay:1.0 completion:^{
+		%init(ClientLastQuestion);
+		self.rootViewController.view.option1Label.text = @"YES (Vol.Up)  ";
+		self.rootViewController.view.option2Label.text = @"NO  (Vol.Down)";
+		self.handleVolumeButtons = YES;
+	}];
+}
+- (void)handleVolumeUp {
+	[self continueDialogue];
+}
+- (void)handleVolumeDown {
+	[self.rootViewController.view animateString:@"Then stay here for an\neternity." completion:^{
+		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
+			usleep(1000000);
+			dispatch_async(dispatch_get_main_queue(), ^{
+				CFNotificationCenterPostNotification(
+					notifCenter,
+					RespringNotification,
+					NULL,
+					NULL,
+					YES
+				);
+			});
+		});
+	}];
+}
+
+%end
 %end
 
 %group Client
@@ -201,11 +263,31 @@ static void BNCHandlePhaseNotification(
 		[self.rootViewController.view.label setText:@"But nobody came."];
 	}
 }
+- (void)continueDialogue {
+	[self.rootViewController.view animateStrings:@[
+		@" \x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07",
+		@"Perhaps.",
+		@"We can reach a compromise.",
+		@"You still have something\nI want.",
+		@"Give it to me.",
+		@"And I will bring your\ndevice back.",
+		@" "
+	] delay:1.0 completion:^{
+		%init(ClientPhase3);
+		self.rootViewController.view.option1Label.text = @"YES (Vol.Up)  ";
+		self.rootViewController.view.option2Label.text = @"NO  (Vol.Down)";
+		self.handleVolumeButtons = YES;
+	}];
+}
 - (void)handleVolumeUp {
-	[self.rootViewController.view animateString:@"Exactly." completion:nil];
+	[self.rootViewController.view animateString:@"Exactly.\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07" completion:^{
+		[self continueDialogue];
+	}];
 }
 - (void)handleVolumeDown {
-	[self.rootViewController.view animateString:@"Then what are you looking\nfor?" completion:nil];
+	[self.rootViewController.view animateString:@"Then what are you looking\nfor?." completion:^{
+		[self continueDialogue];
+	}];
 }
 %end
 
@@ -270,11 +352,12 @@ static void BNCHandlePhaseNotification(
 		[self.blackView.centerXAnchor constraintEqualToAnchor:self.centerXAnchor].active =
 		[self.blackView.centerYAnchor constraintEqualToAnchor:self.centerYAnchor].active = YES;
 		if (!audioPlayer) {
+			#define audioLevel 0.45
 			if (%c(VolumeControl)) {
-				((VolumeControl *)[%c(VolumeControl) sharedVolumeControl]).mediaVolume = 0.65;
+				((VolumeControl *)[%c(VolumeControl) sharedVolumeControl]).mediaVolume = audioLevel;
 			}
 			else {
-				((VolumeControl *)[%c(SBVolumeControl) sharedInstance]).activeCategoryVolume = 0.65;
+				((VolumeControl *)[%c(SBVolumeControl) sharedInstance]).activeCategoryVolume = audioLevel;
 			}
 			BNCHandlePhaseNotification(NULL, NULL, Phase1Notification, NULL, NULL);
 		}
@@ -344,6 +427,18 @@ static void BNCHandlePhaseNotification(
 				notifCenter, NULL,
 				&BNCHandlePhaseNotification,
 				Phase2Notification,
+				NULL, 0
+			);
+			CFNotificationCenterAddObserver(
+				notifCenter, NULL,
+				&BNCHandlePhaseNotification,
+				Phase3Notification,
+				NULL, 0
+			);
+			CFNotificationCenterAddObserver(
+				notifCenter, NULL,
+				&BNCHandleRespringNotification,
+				RespringNotification,
 				NULL, 0
 			);
 			%init(Server);
