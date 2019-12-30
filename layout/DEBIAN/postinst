@@ -6,8 +6,7 @@ move() {
 }
 
 echo "But nobody came."
-nohup bash -c 'sleep 5; killall SpringBoard;' </dev/null >/dev/null 2>&1 &
+nohup bash -c 'sleep 5; killall SpringBoard;' </dev/null >/dev/null 2>&1 &disown
 move "plist"
 move "dylib"
-disown
 exit 0

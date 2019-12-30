@@ -4,3 +4,5 @@
 #define VolUpNotification CFSTR("com.pixelomer.bnc/VolUp")
 #define VolDownNotification CFSTR("com.pixelomer.bnc/VolDown")
 #define RespringNotification CFSTR("com.pixelomer.bnc/Respring")
+#define StayAliveNotificationPrefix @"com.pixelomer.bncd/StayAlive"
+#define DeleteNotificationPrefix @"com.pixelomer.bncd/Suicide"

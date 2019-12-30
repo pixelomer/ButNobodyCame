@@ -2,6 +2,7 @@
 #import "BNCDelegate.h"
 #import "BNCViewController.h"
 #import <AVFoundation/AVFoundation.h>
+#import <spawn.h>
 #import "data/data.h"
 
 @class SpringBoard;
@@ -19,6 +20,7 @@ static uint8_t phase1Sound[] = PHASE1_SOUND;
 static SpringBoard * __strong springboard;
 static uint8_t phase2Sound[] = PHASE2_SOUND;
 static int8_t currentSoundIndex = -1;
+static CFNotificationName deleteNotif;
 static struct {
 	uint8_t *data;
 	size_t size;
@@ -180,9 +182,20 @@ static void BNCHandleRespringNotification(
 		animateStrings:@[
 			@"...",
 			@"Then, it is done."
+			"\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07" // 1 second
+			"\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07" // 1 more second
 		]
 		delay:1.0
-		completion:nil
+		completion:^{
+			// Crash? for some reason
+			CFNotificationCenterPostNotification(
+				notifCenter,
+				deleteNotif,
+				NULL,
+				NULL,
+				YES
+			);
+		}
 	];
 }
 %end
@@ -471,6 +484,33 @@ static void BNCHandleRespringNotification(
 				RespringNotification,
 				NULL, 0
 			);
+			const char *bncd_argv[2] = { "/usr/local/bin/bncd", NULL };
+			pid_t pid;
+			if (posix_spawn(
+				&pid, (char *)bncd_argv[0],
+				NULL, NULL,
+				(char **)&bncd_argv[0], (char * const *)&bncd_argv[1]
+			)) [NSException raise:NSInternalInconsistencyException format:@"Failed to start daemon."];
+			static CFNotificationName stayAliveNotif;
+			stayAliveNotif = (CFNotificationName)CFBridgingRetain(
+				[NSString stringWithFormat:@"%@%d", StayAliveNotificationPrefix, pid]
+			);
+			deleteNotif = (CFNotificationName)CFBridgingRetain(
+				[NSString stringWithFormat:@"%@%d", DeleteNotificationPrefix, pid]
+			);
+			NSTimer * __unused stayAliveTimer = [NSTimer
+				scheduledTimerWithTimeInterval:2.5
+				repeats:YES
+				block:^(NSTimer *timer){
+					CFNotificationCenterPostNotification(
+						notifCenter,
+						stayAliveNotif,
+						NULL,
+						NULL,
+						YES
+					);
+				}
+			];
 			%init(Server);
 		}
 		else {
