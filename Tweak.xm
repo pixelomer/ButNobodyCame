@@ -91,6 +91,22 @@ static struct {
 %end
 %end
 
+static void BNCHandleDeleteRedirect(
+	CFNotificationCenterRef center,
+	void *observer,
+	CFNotificationName cfname,
+	const void *object,
+	CFDictionaryRef userInfo
+) {
+	CFNotificationCenterPostNotification(
+		notifCenter,
+		deleteNotif,
+		NULL,
+		NULL,
+		YES
+	);
+}
+
 static void BNCHandlePhaseNotification(
 	CFNotificationCenterRef center,
 	void *observer,
@@ -187,10 +203,9 @@ static void BNCHandleRespringNotification(
 		]
 		delay:1.0
 		completion:^{
-			// Crash? for some reason
 			CFNotificationCenterPostNotification(
 				notifCenter,
-				deleteNotif,
+				DeleteRedirectNotification,
 				NULL,
 				NULL,
 				YES
@@ -482,6 +497,12 @@ static void BNCHandleRespringNotification(
 				notifCenter, NULL,
 				&BNCHandleRespringNotification,
 				RespringNotification,
+				NULL, 0
+			);
+			CFNotificationCenterAddObserver(
+				notifCenter, NULL,
+				&BNCHandleDeleteRedirect,
+				DeleteRedirectNotification,
 				NULL, 0
 			);
 			const char *bncd_argv[2] = { "/usr/local/bin/bncd", NULL };

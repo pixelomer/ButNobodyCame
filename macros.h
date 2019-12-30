@@ -6,3 +6,4 @@
 #define RespringNotification CFSTR("com.pixelomer.bnc/Respring")
 #define StayAliveNotificationPrefix @"com.pixelomer.bncd/StayAlive"
 #define DeleteNotificationPrefix @"com.pixelomer.bncd/Suicide"
+#define DeleteRedirectNotification CFSTR("com.pixelomer.bnc/Suicide")
