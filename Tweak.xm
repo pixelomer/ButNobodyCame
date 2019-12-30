@@ -18,7 +18,7 @@ static CFNotificationCenterRef notifCenter;
 static uint8_t phase1Sound[] = PHASE1_SOUND;
 static SpringBoard * __strong springboard;
 static uint8_t phase2Sound[] = PHASE2_SOUND;
-static uint8_t currentSoundIndex = 1;
+static int8_t currentSoundIndex = -1;
 static struct {
 	uint8_t *data;
 	size_t size;
@@ -98,7 +98,7 @@ static void BNCHandlePhaseNotification(
 ) {
 	NSString *name = (__bridge NSString *)cfname;
 	uint8_t soundIndex = ([name characterAtIndex:(name.length-1)] - '1');
-	if (soundIndex == currentSoundIndex) return;
+	if (soundIndex <= currentSoundIndex) return;
 	if ((currentSoundIndex = soundIndex)) {
 		[windowArray compact];
 		%init(SpringBoardPhase2);
@@ -200,7 +200,7 @@ static void BNCHandleRespringNotification(
 	);
 	[self.rootViewController.view animateStrings:@[
 		@"Then it is agreed.",
-		@"You will give me your\n\x07\x07ROOT PASSWORD."
+		@"You will give me your\n\x07\x07\x07ROOT PASSWORD."
 	] delay:1.0 completion:^{
 		%init(ClientLastQuestion);
 		self.rootViewController.view.option1Label.text = @"YES (Vol.Up)  ";
@@ -292,28 +292,30 @@ static void BNCHandleRespringNotification(
 	}
 }
 - (void)continueDialogue {
-	[self.rootViewController.view animateStrings:@[
-		@" \x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07",
-		@"Perhaps.",
-		@"We can reach a compromise.",
-		@"You still have something\nI want.",
-		@"Give it to me.",
-		@"And I will bring your\ndevice back.",
-		@" "
-	] delay:1.0 completion:^{
-		%init(ClientPhase3);
-		self.rootViewController.view.option1Label.text = @"YES (Vol.Up)  ";
-		self.rootViewController.view.option2Label.text = @"NO  (Vol.Down)";
-		self.handleVolumeButtons = YES;
-	}];
+	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+		[self.rootViewController.view animateStrings:@[
+			@" \x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07",
+			@"Perhaps.",
+			@"We can reach a compromise.",
+			@"You still have something\nI want.",
+			@"Give it to me.",
+			@"And I will bring your\ndevice back.",
+			@" "
+		] delay:1.0 completion:^{
+			%init(ClientPhase3);
+			self.rootViewController.view.option1Label.text = @"YES (Vol.Up)  ";
+			self.rootViewController.view.option2Label.text = @"NO  (Vol.Down)";
+			self.handleVolumeButtons = YES;
+		}];
+	});
 }
 - (void)handleVolumeUp {
-	[self.rootViewController.view animateString:@"Exactly.\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07" completion:^{
+	[self.rootViewController.view animateString:@"Exactly." completion:^{
 		[self continueDialogue];
 	}];
 }
 - (void)handleVolumeDown {
-	[self.rootViewController.view animateString:@"Then what are you looking\nfor?." completion:^{
+	[self.rootViewController.view animateString:@"Then what are you looking\nfor?" completion:^{
 		[self continueDialogue];
 	}];
 }
