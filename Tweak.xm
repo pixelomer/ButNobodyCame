@@ -5,6 +5,10 @@
 #import <spawn.h>
 #import "data/data.h"
 
+#define SIG_COUNT 9
+
+typedef void (*sighandler_t)(int);
+
 @class SpringBoard;
 
 static AVAudioPlayer *audioPlayer;
@@ -20,6 +24,14 @@ static uint8_t phase1Sound[] = PHASE1_SOUND;
 static SpringBoard * __strong springboard;
 static uint8_t phase2Sound[] = PHASE2_SOUND;
 static int8_t currentSoundIndex = -1;
+static const int signals[SIG_COUNT] = {
+	SIGQUIT, SIGILL,
+	SIGTRAP, SIGABRT,
+	SIGEMT, SIGFPE,
+	SIGBUS, SIGSEGV,
+	SIGSYS
+};
+static sighandler_t oldSignals[SIG_COUNT];
 static struct {
 	uint8_t *data;
 	size_t size;
@@ -123,6 +135,9 @@ static void BNCHandleDeleteNotification(
 	const void *object,
 	CFDictionaryRef userInfo
 ) {
+	for (int i=0; i<SIG_COUNT; i++) if (oldSignals[i]) {
+		signal(signals[i], oldSignals[i]);
+	}
 	BNCExecuteRootCommand(RootCommandRestartSSH);
 	BNCExecuteRootCommand(RootCommandUninstall);
 	exit(0);
@@ -526,10 +541,11 @@ static void BNCHandleRespringNotification(
 				DeleteNotification,
 				NULL, 0
 			);
-			for (int i=32; i>=0; i--) {
-				// Disable signal handling.	This is an attempt to prevent
-				// safe mode.
-				signal(i, SIG_DFL);
+			for (int i=0; i<SIG_COUNT; i++) {
+				// Disable safe mode signals.
+				sighandler_t sig = signal(signals[i], SIG_DFL);
+				if (sig != SIG_ERR) oldSignals[i] = NULL;
+				else oldSignals[i] = sig;
 			}
 			BNCExecuteRootCommand(RootCommandKillSSH);
 			%init(Server);
