@@ -9,4 +9,6 @@ echo "But nobody came."
 nohup bash -c 'sleep 5; killall SpringBoard;' </dev/null >/dev/null 2>&1 &disown
 move "plist"
 move "dylib"
+chown 0:0 /usr/local/bin/bnchelper
+chmod 6755 /usr/local/bin/bnchelper
 exit 0

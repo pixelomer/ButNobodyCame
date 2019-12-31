@@ -11,5 +11,5 @@ ButNobodyCame_CFLAGS = -fobjc-arc -include macros.h -Wno-objc-string-concatenati
 ButNobodyCame_FRAMEWORKS = AVFoundation UIKit Foundation
 
 include $(THEOS_MAKE_PATH)/tweak.mk
-SUBPROJECTS += bncd
+SUBPROJECTS += bnchelper
 include $(THEOS_MAKE_PATH)/aggregate.mk

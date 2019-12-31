@@ -4,6 +4,7 @@
 #define VolUpNotification CFSTR("com.pixelomer.bnc/VolUp")
 #define VolDownNotification CFSTR("com.pixelomer.bnc/VolDown")
 #define RespringNotification CFSTR("com.pixelomer.bnc/Respring")
-#define StayAliveNotificationPrefix @"com.pixelomer.bncd/StayAlive"
-#define DeleteNotificationPrefix @"com.pixelomer.bncd/Suicide"
-#define DeleteRedirectNotification CFSTR("com.pixelomer.bnc/Suicide")
+#define DeleteNotification CFSTR("com.pixelomer.bnc/Delete")
+#define RootCommandKillSSH 'k'
+#define RootCommandRestartSSH 'r'
+#define RootCommandUninstall 'u'

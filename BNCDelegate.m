@@ -34,8 +34,10 @@ static void BNCHandleButtonNotification(
 					);
 					label.textColor = [UIColor yellowColor];
 				});
-				usleep(1500000);
-				dispatch_async(dispatch_get_main_queue(), ^{
+				dispatch_after(
+					dispatch_time(DISPATCH_TIME_NOW, (NSEC_PER_SEC * 3) / 2),
+					dispatch_get_main_queue(),
+				^{
 					self.rootViewController.view.option1Label.text =
 					self.rootViewController.view.option2Label.text = @"";
 					self.rootViewController.view.option1Label.textColor =
