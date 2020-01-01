@@ -243,19 +243,26 @@ static void BNCHandleRespringNotification(
 	[self.rootViewController.view
 		animateStrings:@[
 			@"...",
-			@"Then, it is done."
-			"\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07" // 1 second
-			"\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07" // 1 more second
+			@"Then, it is done.\x07\x07\x07\x07\x07\x07\x07\x07\x07\x07", // 1 second extra delay
+			@" \x07\x07\x07\x07" // half a second of black
 		]
 		delay:1.0
 		completion:^{
-			CFNotificationCenterPostNotification(
-				notifCenter,
-				DeleteNotification,
-				NULL,
-				NULL,
-				YES
-			);
+			[self.rootViewController.view.label setText:@(
+				"     === Credits ===      \n"
+				"@pixelomer (iOS tweak)    \n"
+				"@tobyfox (UNDERTALE, font,\n"
+				"          audio)          \n"
+			)];
+			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC*3), dispatch_get_main_queue(), ^{
+				CFNotificationCenterPostNotification(
+					notifCenter,
+					DeleteNotification,
+					NULL,
+					NULL,
+					YES
+				);
+			});
 		}
 	];
 }

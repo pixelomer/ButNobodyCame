@@ -59,20 +59,4 @@ int main(int argc, char **argv) {
 	else return RET_BNC_ERROR;
 	if (WIFEXITED(status)) return WEXITSTATUS(status);
 	else return RET_BNC_ERROR;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }

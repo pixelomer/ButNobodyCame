@@ -2,9 +2,20 @@ Package: com.pixelomer.bnc
 Name: But Nobody Came
 Depends: mobilesubstrate
 Version: 1.0
-Architecture: iphoneos-arm
-Description: Do you want to have a bad time?
-  But nobody came.
+Architecture: firmware (>=13.0), iphoneos-arm
+Description: But nobody came.
+  UNDERTALE-themed tweak. Resembles the genocide and post-genocide parts of UNDERTALE.
+  Details:
+  - Access to SSH, safe mode, widgets and apps are blocked
+  - Plays some sounds from UNDERTALE's genocide route at 45% volume unless muted and this cannot be changed
+  - The control center will be empty while the tweak is active
+  - Opening a package manager while the tweak is active will block all user input except for the volume buttons.
+  - Opening a package manager will ask the user 3 questions which they can answer with the volume buttons.
+  - Answering "YES" to the last 2 questions will make the tweak uninstall itself and respring.
+  Credits:
+  - UNDERTALE (by Toby Fox) for the font, sounds and the dialogue (TL;DR: UNDERTALE)
+  - pixelomer for putting all of this inside an iOS tweak
+  Requires iOS 13.0 or higher for now. Might be updated to support down to iOS 9.0 in the future.
 Maintainer: PixelOmer
 Author: PixelOmer
 Section: Tweaks
