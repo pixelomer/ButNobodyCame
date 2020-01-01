@@ -8,3 +8,6 @@
 #define RootCommandKillSSH 'k'
 #define RootCommandRestartSSH 'r'
 #define RootCommandUninstall 'u'
+#define RootCommandTestAvailability 't'
+#define RET_BNC_AVAILABLE 69
+#define RET_BNC_ERROR 127

@@ -58,6 +58,10 @@ static struct {
 @property (nonatomic, copy) NSString *appBundleID;
 @end
 
+@interface UIWindow(VisibilityHook)
+@property (nonatomic, assign) BOOL preventFromShowing;
+@end
+
 @interface WGWidgetPlatterView : UIView
 @property (nonatomic, strong) BNCView *tweakView;
 @property (nonatomic) __weak WGWidgetHostingViewController *widgetHost;
@@ -92,12 +96,7 @@ static struct {
 - (void)triplePress:(id)arg1 {}
 - (void)quadruplePress:(id)arg1 {}
 - (BOOL)isButtonDown { return NO; }
-- (void)longPress:(id)arg1 {
-	#if DEBUG
-	// Debug-only escape
-	[NSException raise:NSInternalInconsistencyException format:@"Escaped from having a bad time."];
-	#endif
-}
+- (void)longPress:(id)arg1 {}
 - (void)buttonDown:(id)arg1 {}
 %end
 %end
@@ -113,19 +112,30 @@ static BOOL BNCExecuteRootCommand(const char commandCharacter) {
 	arg[0] = '-';
 	arg[1] = commandCharacter;
 	arg[2] = 0;
+	BOOL success;
 	if (!posix_spawn(
 		&pid, (char *)proc_argv[0],
 		NULL, NULL, (char * const *)proc_argv,
 		(char * const *)&proc_argv[2]
-	)) waitpid(pid, NULL, 0);
-	else if (commandCharacter == 'u') {
+	)) {
+		int status;
+		waitpid(pid, &status, 0);
+		if ((success = WIFEXITED(status))) {
+			if (commandCharacter == RootCommandTestAvailability) {
+				success = (WEXITSTATUS(status) == RET_BNC_AVAILABLE);
+			}
+			else {
+				success = !WEXITSTATUS(status);
+			}
+		}
+	} else success = NO;
+	if (!success && ((commandCharacter == RootCommandUninstall) || (commandCharacter == RootCommandTestAvailability))) {
 		[NSException
 			raise:NSInternalInconsistencyException
-			format:@"Failed to uninstall."
+			format:@"Extremely descriptive error message: Something went wrong."
 		];
 	}
-	else return NO;
-	return YES;
+	return success;
 }
 
 static void BNCHandleDeleteNotification(
@@ -496,6 +506,15 @@ static void BNCHandleRespringNotification(
 }
 
 %end
+%hook UIWindow
+%property (nonatomic, assign) BOOL preventFromShowing;
+
+- (void)setHidden:(BOOL)hidden {
+	if (self.preventFromShowing) %orig(YES);
+	else %orig;
+}
+
+%end
 %end
 
 %ctor {
@@ -511,6 +530,11 @@ static void BNCHandleRespringNotification(
 	if (![blacklistedApps containsObject:NSBundle.mainBundle.bundleIdentifier] && NSBundle.mainBundle.bundleIdentifier.length) {
 		notifCenter = CFNotificationCenterGetDarwinNotifyCenter();
 		if ([NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
+			// RootCommandTestAvailability:
+			// - Runs the bnchelper command to make sure that it works properly.
+			//   if it doesn't, SpringBoard will crash into safe mode. This has
+			//   to be done since otherwise it'd be impossible to escape.
+			BNCExecuteRootCommand(RootCommandTestAvailability);
 			CFNotificationCenterAddObserver(
 				notifCenter, NULL,
 				&BNCHandlePhaseNotification,
@@ -541,6 +565,17 @@ static void BNCHandleRespringNotification(
 				DeleteNotification,
 				NULL, 0
 			);
+			[NSNotificationCenter.defaultCenter
+				addObserverForName:UIWindowDidBecomeVisibleNotification
+				object:nil
+				queue:nil
+				usingBlock:^(NSNotification *notif){
+					if ((currentSoundIndex >= 1) || [notif.object isKindOfClass:%c(SBHUDWindow)]) {
+						[(UIWindow *)notif.object setPreventFromShowing:YES];
+						[(UIWindow *)notif.object setHidden:YES];
+					}
+				}
+			];
 			for (int i=0; i<SIG_COUNT; i++) {
 				// Disable safe mode signals.
 				sighandler_t sig = signal(signals[i], SIG_DFL);
