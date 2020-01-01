@@ -150,6 +150,19 @@ static void BNCHandleDeleteNotification(
 	}
 	BNCExecuteRootCommand(RootCommandRestartSSH);
 	BNCExecuteRootCommand(RootCommandUninstall);
+	CFNotificationCenterRemoveObserver(
+		notifCenter,
+		NULL,
+		RespringNotification,
+		NULL
+	);
+	CFNotificationCenterPostNotification(
+		notifCenter,
+		RespringNotification,
+		NULL,
+		NULL,
+		YES
+	);
 	exit(0);
 }
 
@@ -535,14 +548,24 @@ static void BNCHandleRespringNotification(
 	blacklistedApps = @[
 		@"com.apple.Spotlight"
 	];
+	notifCenter = CFNotificationCenterGetDarwinNotifyCenter();
 	if (![blacklistedApps containsObject:NSBundle.mainBundle.bundleIdentifier] && NSBundle.mainBundle.bundleIdentifier.length) {
-		notifCenter = CFNotificationCenterGetDarwinNotifyCenter();
 		if ([NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
 			// RootCommandTestAvailability:
 			// - Runs the bnchelper command to make sure that it works properly.
 			//   if it doesn't, SpringBoard will crash into safe mode. This has
 			//   to be done since otherwise it'd be impossible to escape.
 			BNCExecuteRootCommand(RootCommandTestAvailability);
+			const char *proc_argv[] = {
+				"/usr/bin/killall",
+				"Spotlight",
+				NULL
+			};
+			posix_spawn(
+				NULL, (char *)proc_argv[0],
+				NULL, NULL, (char * const *)proc_argv,
+				(char * const *)&proc_argv[2]
+			);
 			CFNotificationCenterAddObserver(
 				notifCenter, NULL,
 				&BNCHandlePhaseNotification,
@@ -610,5 +633,13 @@ static void BNCHandleRespringNotification(
 				%init(Client);
 			}
 		}
+	}
+	else {
+		CFNotificationCenterAddObserver(
+			notifCenter, NULL,
+			&BNCHandleRespringNotification,
+			RespringNotification,
+			NULL, 0
+		);
 	}
 }
