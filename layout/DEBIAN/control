@@ -1,8 +1,8 @@
 Package: com.pixelomer.bnc
 Name: But Nobody Came
-Depends: mobilesubstrate
+Depends: mobilesubstrate, firmware (>=13.0)
 Version: 1.0
-Architecture: firmware (>=13.0), iphoneos-arm
+Architecture: iphoneos-arm
 Description: But nobody came.
   UNDERTALE-themed tweak. Resembles the genocide and post-genocide parts of UNDERTALE.
   Details:
