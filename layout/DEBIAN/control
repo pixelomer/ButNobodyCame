@@ -13,8 +13,9 @@ Description: But nobody came.
   - Opening a package manager will ask the user 3 questions which they can answer with the volume buttons.
   - Answering "YES" to the last 2 questions will make the tweak uninstall itself and respring.
   Credits:
-  - UNDERTALE (by Toby Fox) for the font, sounds and the dialogue (TL;DR: UNDERTALE)
-  - pixelomer for putting all of this inside an iOS tweak
+  - UNDERTALE (by Toby Fox) for the font, sounds and the dialogue
+  - pixelomer (me) for putting all of this inside an iOS tweak
+  - ConorTheDev for helping me modify the widgets
   Requires iOS 13.0 or higher for now. Might be updated to support down to iOS 9.0 in the future.
 Maintainer: PixelOmer
 Author: PixelOmer

@@ -253,6 +253,7 @@ static void BNCHandleRespringNotification(
 				"@pixelomer (iOS tweak)    \n"
 				"@tobyfox (UNDERTALE, font,\n"
 				"          audio)          \n"
+				"@conorthedev (widgets)    \n"
 			)];
 			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC*3), dispatch_get_main_queue(), ^{
 				CFNotificationCenterPostNotification(
