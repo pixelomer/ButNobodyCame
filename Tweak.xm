@@ -597,7 +597,11 @@ static void BNCHandleRespringNotification(
 			NSString *bpath = NSBundle.mainBundle.bundlePath;
 			if ([bpath hasPrefix:@"/var"] || [bpath hasPrefix:@"/private/var"] || [bpath hasPrefix:@"/Applications"]) {
 				phase2IDs = @[
-					@"com.saurik.Cydia"
+					@"com.saurik.Cydia",
+					@"xyz.willy.Zebra",
+					@"me.apptapp.installer",
+					@"com.notdan.Lime",
+					@"org.coolstar.SileoStore"
 				];
 				blockedKeys = @[
 					@"UIApplicationSupportsMultipleScenes",
