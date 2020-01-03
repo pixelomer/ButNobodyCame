@@ -19,8 +19,10 @@ static NSTimer *preventAutolockTimer;
 static NSPointerArray *windowArray;
 static NSArray *blacklistedApps;
 static NSDictionary *localizationReplacements;
+static NSDictionary<NSString *, NSValue *> *simpleHooksOriginals;
 static CFNotificationCenterRef notifCenter;
 static uint8_t phase1Sound[] = PHASE1_SOUND;
+static BOOL enableSimpleHooks;
 static SpringBoard * __strong springboard;
 static uint8_t phase2Sound[] = PHASE2_SOUND;
 static int8_t currentSoundIndex = -1;
@@ -43,11 +45,7 @@ static struct {
 
 @interface SpringBoard : NSObject
 - (BOOL)isLocked;
-@end
-
-@interface SBIdleTimerProxy : NSObject
-- (void)reset;
-- (id)sourceTimer;
+- (void)resetIdleTimerAndUndim;
 @end
 
 @interface SBFWallpaperView : UIView
@@ -58,48 +56,18 @@ static struct {
 @property (nonatomic, copy) NSString *appBundleID;
 @end
 
-@interface UIWindow(VisibilityHook)
-@property (nonatomic, assign) BOOL preventFromShowing;
-@end
-
 @interface WGWidgetPlatterView : UIView
 @property (nonatomic, strong) BNCView *tweakView;
 @property (nonatomic) __weak WGWidgetHostingViewController *widgetHost;
 @end
 
-%group SpringBoardPhase2
-%hook UIWindow
-- (void)setUserInteractionEnabled:(BOOL)isIt {}
-%end
-%hook _UISystemGestureWindow
-- (id)hitTest:(CGPoint)arg1 withEvent:(id)arg2 {
-	return nil;
+static void BNCSimpleHook(id self, SEL _cmd, id unknown) {
+	if (!enableSimpleHooks) {
+		void(*originalImplementation)(id,SEL,id);
+		originalImplementation = (typeof(originalImplementation))[simpleHooksOriginals[NSStringFromSelector(_cmd)] pointerValue];
+		originalImplementation(self, _cmd, unknown);
+	}
 }
-%end
-%hook SBHomeHardwareButton
-- (void)initialButtonDown:(id)arg1 {}
-- (void)initialButtonUp:(id)arg1 {}
-- (void)singlePressUp:(id)arg1 {}
-- (void)acceleratedSinglePressUp:(id)arg1 {}
-- (void)doublePressDown:(id)arg1 {}
-- (void)doublePressUp:(id)arg1 {}
-- (void)triplePressUp:(id)arg1 {}
-- (void)doubleTapUp:(id)arg1 {}
-- (void)screenshotRecognizerDidRecognize:(id)arg1 {}
-- (BOOL)isButtonDown { return NO; }
-- (void)longPress:(id)arg1 {}
-- (void)_singlePressUp:(id)arg1 {}
-%end
-%hook SBLockHardwareButton
-- (void)singlePress:(id)arg1 {}
-- (void)doublePress:(id)arg1 {}
-- (void)triplePress:(id)arg1 {}
-- (void)quadruplePress:(id)arg1 {}
-- (BOOL)isButtonDown { return NO; }
-- (void)longPress:(id)arg1 {}
-- (void)buttonDown:(id)arg1 {}
-%end
-%end
 
 static BOOL BNCExecuteRootCommand(const char commandCharacter) {
 	pid_t pid;
@@ -178,7 +146,7 @@ static void BNCHandlePhaseNotification(
 	if (soundIndex <= currentSoundIndex) return;
 	if ((currentSoundIndex = soundIndex)) {
 		[windowArray compact];
-		%init(SpringBoardPhase2);
+		enableSimpleHooks = YES;
 		for (UIWindow *window in windowArray.allObjects) {
 			window.userInteractionEnabled = NO;
 		}
@@ -187,13 +155,7 @@ static void BNCHandlePhaseNotification(
 			repeats:YES
 			block:^(NSTimer *timer){
 				if (!springboard.isLocked) {
-					SBIdleTimerProxy *currentTimer = MSHookIvar<id>(springboard, "_idleTimer");
-					if (currentTimer) {
-						while (currentTimer.class == %c(SBIdleTimerProxy)) {
-							currentTimer = currentTimer.sourceTimer;
-						}
-						[currentTimer reset];
-					}
+					[springboard resetIdleTimerAndUndim];
 				}
 			}
 		];
@@ -421,6 +383,8 @@ static void BNCHandleRespringNotification(
 }
 
 %hookf(int, "main", int argc, char **argv) {
+	// This hook is not necessary. However, it can prevent the app from doing useless things
+	// in main. It might not do it, but it might ¯\_(ツ)_/¯
 	return UIApplicationMain(argc, argv, nil, nil);
 }
 %end
@@ -431,6 +395,18 @@ static void BNCHandleRespringNotification(
 	id orig = %orig;
 	springboard = orig;
 	return orig;
+}
+%end
+%hook UIWindow
+- (void)setUserInteractionEnabled:(BOOL)isIt {
+	if (enableSimpleHooks) %orig(NO);
+	else %orig;
+}
+%end
+%hook _UISystemGestureWindow
+- (id)hitTest:(CGPoint)arg1 withEvent:(id)arg2 {
+	if (enableSimpleHooks) return nil;
+	else return %orig;
 }
 %end
 %hook WGWidgetPlatterView
@@ -527,12 +503,34 @@ static void BNCHandleRespringNotification(
 }
 
 %end
-%hook UIWindow
-%property (nonatomic, assign) BOOL preventFromShowing;
+%hook VolumeControl
 
-- (void)setHidden:(BOOL)hidden {
-	if (self.preventFromShowing) %orig(YES);
-	else %orig;
+- (float)volumeStepUp {
+	if (audioPlayer) {
+		CFNotificationCenterPostNotification(
+			notifCenter,
+			VolUpNotification,
+			NULL,
+			NULL,
+			YES
+		);
+		return 0.0; // ?
+	}
+	else return %orig;
+}
+
+- (float)volumeStepDown {
+	if (audioPlayer) {
+		CFNotificationCenterPostNotification(
+			notifCenter,
+			VolDownNotification,
+			NULL,
+			NULL,
+			YES
+		);
+		return 0.0; // ?
+	}
+	else return %orig;
 }
 
 %end
@@ -596,13 +594,47 @@ static void BNCHandleRespringNotification(
 				DeleteNotification,
 				NULL, 0
 			);
+			NSDictionary *simpleHooks = @{
+				@"SBHomeHardwareButton" : @[
+					@"initialButtonUp:",
+					@"singlePressUp:",
+					@"acceleratedSinglePressUp:",
+					@"doublePressDown:",
+					@"doublePressUp:",
+					@"triplePressUp:",
+					@"doubleTapUp:",
+					@"screenshotRecognizerDidRecognize:",
+					@"longPress:",
+					@"_singlePressUp:"
+				],
+				@"SBLockHardwareButton" : @[
+					@"singlePress:",
+					@"doublePress:",
+					@"triplePress:",
+					@"quadruplePress:",
+					@"longPress:",
+					@"buttonDown:"
+				]
+			};
+			NSMutableDictionary *simpleHooksOriginalsMutable = [NSMutableDictionary new];
+			for (NSString *className in simpleHooks) {
+				Class cls = NSClassFromString(className);
+				if (!cls) continue;
+				for (NSString *selectorStr in simpleHooks[className]) {
+					SEL selector = NSSelectorFromString(selectorStr);
+					if (!selector) continue;
+					IMP oldImplementation;
+					MSHookMessageEx(cls, selector, (IMP)&BNCSimpleHook, &oldImplementation);
+					simpleHooksOriginalsMutable[selectorStr] = [NSValue valueWithPointer:(void *)oldImplementation];
+				}
+			}
+			simpleHooksOriginals = simpleHooksOriginalsMutable.copy;
 			[NSNotificationCenter.defaultCenter
 				addObserverForName:UIWindowDidBecomeVisibleNotification
 				object:nil
 				queue:nil
 				usingBlock:^(NSNotification *notif){
-					if ((currentSoundIndex >= 1) || [notif.object isKindOfClass:%c(SBHUDWindow)]) {
-						[(UIWindow *)notif.object setPreventFromShowing:YES];
+					if ([notif.object isKindOfClass:%c(SBHUDWindow)]) {
 						[(UIWindow *)notif.object setHidden:YES];
 					}
 				}

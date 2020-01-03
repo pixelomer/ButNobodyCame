@@ -1,10 +1,12 @@
 Package: com.pixelomer.bnc
 Name: But Nobody Came
-Depends: mobilesubstrate, firmware (>=13.0)
+Depends: mobilesubstrate, firmware (>=10.0), coreutils
 Version: 1.0
 Architecture: iphoneos-arm
 Description: But nobody came.
   UNDERTALE-themed tweak. Resembles the genocide and post-genocide parts of UNDERTALE.
+  Read the details before installing. Although it is harmless, you might not want this tweak on your device.
+  .
   Details:
   - Access to SSH, safe mode, widgets and apps are blocked
   - Plays some sounds from UNDERTALE's genocide route at 45% volume unless muted and this cannot be changed

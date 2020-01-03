@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
 	setgid(0);
 	setgid(0);
 	const char *proc_argv[] = {
-		"/sbin/launchctl",
+		"launchctl",
 		NULL,
 		"/Library/LaunchDaemons/com.openssh.sshd.plist",
 		NULL
@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
 			proc_argv[1] = "unload";
 			break;
 		case RootCommandUninstall:
-			proc_argv[0] = "/usr/bin/dpkg";
+			proc_argv[0] = "dpkg";
 			proc_argv[1] = "-r";
 			proc_argv[2] = "com.pixelomer.bnc";
 			
@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	int status;
-	if (!posix_spawn(
+	if (!posix_spawnp(
 		&pid, (char *)proc_argv[0],
 		NULL, NULL, (char * const *)proc_argv,
 		(char * const *)proc_envp
