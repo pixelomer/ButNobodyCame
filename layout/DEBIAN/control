@@ -1,5 +1,5 @@
 Package: com.pixelomer.bnc
-Name: But Nobody Came
+Name: ButNobodyCame
 Depends: mobilesubstrate, firmware (>=10.0), coreutils
 Version: 1.0
 Architecture: iphoneos-arm
@@ -18,7 +18,7 @@ Description: But nobody came.
   - UNDERTALE (by Toby Fox) for the font, sounds and the dialogue
   - pixelomer (me) for putting all of this inside an iOS tweak
   - ConorTheDev for helping me modify the widgets
-  Requires iOS 13.0 or higher for now. Might be updated to support down to iOS 9.0 in the future.
+  Requires iOS 10.0 or higher.
 Maintainer: PixelOmer
 Author: PixelOmer
 Section: Tweaks
